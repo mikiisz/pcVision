@@ -185,7 +185,7 @@ for i in os.listdir(data):
 
         # 9. filter lines
         new_lines = filter_lines(line_functions)
-        print(str.format('Kat: {}', get_angle(new_lines)))
+        print(str.format('Angle: {}', get_angle(new_lines)))
         new_img_lines = np.uint8(np.ones(binary.shape))
         new_img_lines = invert(new_img_lines * 255).round().astype(np.uint8)
         for m, b in new_lines:
