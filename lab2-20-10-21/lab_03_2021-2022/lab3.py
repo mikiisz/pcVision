@@ -9,6 +9,7 @@ from skimage import io
 from skimage.color import rgb2gray
 from skimage.morphology import skeletonize
 from skimage.util import invert
+import math
 
 
 def display_image(image, title):
@@ -118,6 +119,15 @@ def filter_lines(lines):
 
     return result
 
+def get_angle(lines):
+    m1, b1 = lines[0]
+    m2, b2 = lines[1]
+
+    angle_in_degrees1 = math.degrees(math.atan(m1)) if math.degrees(math.atan(m1)) >= 0 else 180 + math.degrees(math.atan(m1))
+    angle_in_degrees2 = math.degrees(math.atan(m2)) if math.degrees(math.atan(m2)) >= 0 else 180 + math.degrees(math.atan(m2))
+
+    return angle_in_degrees1 - angle_in_degrees2 if angle_in_degrees1 > angle_in_degrees2 else angle_in_degrees2 - angle_in_degrees1
+
 
 mpl.rc('image', cmap='gray')
 data = "./bone_seg"
@@ -175,6 +185,7 @@ for i in os.listdir(data):
 
         # 9. filter lines
         new_lines = filter_lines(line_functions)
+        print(str.format('Kat: {}', get_angle(new_lines)))
         new_img_lines = np.uint8(np.ones(binary.shape))
         new_img_lines = invert(new_img_lines * 255).round().astype(np.uint8)
         for m, b in new_lines:
