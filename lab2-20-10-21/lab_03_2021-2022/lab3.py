@@ -1,3 +1,4 @@
+import math
 import os
 
 import cv2
@@ -9,7 +10,6 @@ from skimage import io
 from skimage.color import rgb2gray
 from skimage.morphology import skeletonize
 from skimage.util import invert
-import math
 
 
 def display_image(image, title):
@@ -77,7 +77,7 @@ def get_image_with_longest(image, path):
 def get_lines(image):
     img = image.copy()
     edges = cv2.Canny(np.uint8(img), 0, 1, apertureSize=3)
-    return cv2.HoughLinesP(edges, rho=1, theta=1 * np.pi / 180, threshold=25, minLineLength=100, maxLineGap=50)
+    return cv2.HoughLinesP(edges, rho=1, theta=1 * np.pi / 180, threshold=10, minLineLength=150, maxLineGap=50)
 
 
 def line_function(lines):
@@ -85,8 +85,9 @@ def line_function(lines):
     line_functions = []
     for line in lines:
         for x1, y1, x2, y2 in line:
-            m = (y1 - y2) / (x1 - x2)
-            b = (x1 * y2 - x2 * y1) / (x1 - x2)
+            xdif = x1 - x2 if x1 != x2 else 0.00000001
+            m = (y1 - y2) / (xdif)
+            b = (x1 * y2 - x2 * y1) / (xdif)
             line_functions.append((m, b))
 
     return line_functions
@@ -119,12 +120,15 @@ def filter_lines(lines):
 
     return result
 
+
 def get_angle(lines):
     m1, b1 = lines[0]
-    m2, b2 = lines[1]
+    m2, b2 = lines[-1]
 
-    angle_in_degrees1 = math.degrees(math.atan(m1)) if math.degrees(math.atan(m1)) >= 0 else 180 + math.degrees(math.atan(m1))
-    angle_in_degrees2 = math.degrees(math.atan(m2)) if math.degrees(math.atan(m2)) >= 0 else 180 + math.degrees(math.atan(m2))
+    angle_in_degrees1 = math.degrees(math.atan(m1)) if math.degrees(math.atan(m1)) >= 0 else 180 + math.degrees(
+        math.atan(m1))
+    angle_in_degrees2 = math.degrees(math.atan(m2)) if math.degrees(math.atan(m2)) >= 0 else 180 + math.degrees(
+        math.atan(m2))
 
     return angle_in_degrees1 - angle_in_degrees2 if angle_in_degrees1 > angle_in_degrees2 else angle_in_degrees2 - angle_in_degrees1
 
@@ -185,7 +189,8 @@ for i in os.listdir(data):
 
         # 9. filter lines
         new_lines = filter_lines(line_functions)
-        print(str.format('Angle: {}', get_angle(new_lines)))
+        angle = get_angle(new_lines)
+        print(str.format('Angle: {}', angle))
         new_img_lines = np.uint8(np.ones(binary.shape))
         new_img_lines = invert(new_img_lines * 255).round().astype(np.uint8)
         for m, b in new_lines:
@@ -199,5 +204,4 @@ for i in os.listdir(data):
         white_pixels_mask = np.any(rgb_lines != [255, 255, 255], axis=-1)
         rgb_binary[~white_pixels_mask] = [255, 0, 0]
 
-        display_image(rgb_binary, 'final segmentation')
-
+        display_image(rgb_binary, 'final segmentation, angle = {}'.format(angle))
