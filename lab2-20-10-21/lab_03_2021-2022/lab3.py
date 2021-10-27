@@ -131,19 +131,19 @@ for i in os.listdir(data):
 
         # 2. segment fingers based on colors
         no_green_image = remove_green_color(image)
-        # display_image(no_green_image, 'no green color')
+        display_image(no_green_image, 'no green color')
 
         # 3. convert to binary image
         binary = greyscale(no_green_image)
-        # display_image(binary, 'binary')
+        display_image(binary, 'binary')
 
         # 4. skeletonize
         skeletonized = invert(skeletonize(binary))
-        # display_image(skeletonized, 'skeletonize')
+        display_image(skeletonized, 'skeletonize')
 
         # 5. skeletonize lee
         skeletonized_lee = invert(skeletonize(binary, method='lee'))
-        # display_image(skeletonized_lee, 'skeletonize lee')
+        display_image(skeletonized_lee, 'skeletonize lee')
 
         # 6. skeletonize thin
         # skeletonized_thin = invert(thin(binary))
@@ -152,16 +152,16 @@ for i in os.listdir(data):
         # 7. longest paths
         first_longest_path = get_longest_path(skeletonized_lee)
         first_longest_skelets = get_image_with_longest(skeletonized_lee, first_longest_path)
-        # display_image(first_longest_skelets, 'first longest path')
+        display_image(first_longest_skelets, 'first longest path')
 
         binary_skeletonized_lee = skeletonized_lee > 0
         second_path = binary_skeletonized_lee + ~first_longest_skelets
         second_longest_path = get_longest_path(second_path)
         second_longest_skelets = get_image_with_longest(second_path, second_longest_path)
-        # display_image(second_longest_skelets, 'second longest path')
+        display_image(second_longest_skelets, 'second longest path')
 
         two_longest_paths = first_longest_skelets * second_longest_skelets
-        # display_image(two_longest_paths, 'two longest paths')
+        display_image(two_longest_paths, 'two longest paths')
 
         # 8. detect lines
         lines = get_lines(two_longest_paths)
@@ -171,7 +171,7 @@ for i in os.listdir(data):
         for m, b in line_functions:
             # y = m*x + b
             cv2.line(img_lines, (int((0 - b) / m), 0), (int((1024 - b) / m), 1024), (255, 0, 0), 1)
-        # display_image(img_lines, 'detected lines')
+        display_image(img_lines, 'detected lines')
 
         # 9. filter lines
         new_lines = filter_lines(line_functions)
@@ -179,7 +179,7 @@ for i in os.listdir(data):
         new_img_lines = invert(new_img_lines * 255).round().astype(np.uint8)
         for m, b in new_lines:
             cv2.line(new_img_lines, (int((0 - b) / m), 0), (int((1024 - b) / m), 1024), (255, 0, 0), 1)
-        # display_image(new_img_lines, 'filtered lines')
+        display_image(new_img_lines, 'filtered lines')
 
         # 10. combine images together
         binary = (binary * 255).round().astype(np.uint8)
