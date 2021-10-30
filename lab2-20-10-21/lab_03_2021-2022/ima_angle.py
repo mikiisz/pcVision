@@ -19,6 +19,13 @@ def display_image(image, title):
     plt.show()
 
 
+def save_image(image, title, path):
+    plt.axis('off')
+    plt.title(title)
+    plt.imshow(image)
+    plt.savefig(path)
+
+
 def remove_green_color(image):
     green_pixels_mask = np.any(image != [0, 255, 0], axis=-1)
     black_pixels_mask = np.any(image != [32, 32, 32], axis=-1)
@@ -94,9 +101,10 @@ def line_function(lines):
 
 
 def filter_lines(lines):
-    threshold = 1
+    threshold = 2
     filtered = {}
     result = []
+    # print(lines)
     for m, b in lines:
         a = int(m)
         a_set = a
@@ -121,6 +129,24 @@ def filter_lines(lines):
     return result
 
 
+def find_toes(lines):
+    acc = []
+    for m1, b1 in lines:
+        for m2, b2 in lines:
+            angle_in_degrees1 = math.degrees(math.atan(m1)) if math.degrees(math.atan(m1)) >= 0 else 180 + math.degrees(
+                math.atan(m1))
+
+            angle_in_degrees2 = math.degrees(math.atan(m2)) if math.degrees(math.atan(m2)) >= 0 else 180 + math.degrees(
+                math.atan(m2))
+
+            sum = angle_in_degrees1 - angle_in_degrees2 if angle_in_degrees1 > angle_in_degrees2 else angle_in_degrees2 - angle_in_degrees1
+            acc.append((sum, (m1, b1), (m2, b2)))
+
+    acc.sort(key=lambda x: x[0])
+    winner = acc[-1]
+    return [winner[1], winner[2]]
+
+
 def get_angle(lines):
     m1, b1 = lines[0]
     m2, b2 = lines[-1]
@@ -141,23 +167,24 @@ for i in os.listdir(data):
         image = io.imread(os.path.join(data, i))
 
         # 1. raw image
-        display_image(image, 'raw image')
+        # display_image(image, 'raw image')
 
         # 2. segment fingers based on colors
         no_green_image = remove_green_color(image)
-        display_image(no_green_image, 'no green color')
+        # display_image(no_green_image, 'no green color')
 
         # 3. convert to binary image
         binary = greyscale(no_green_image)
-        display_image(binary, 'binary')
+        # display_image(binary, 'binary')
 
         # 4. skeletonize
         skeletonized = invert(skeletonize(binary))
-        display_image(skeletonized, 'skeletonize')
+        # display_image(skeletonized, 'skeletonize')
 
         # 5. skeletonize lee
         skeletonized_lee = invert(skeletonize(binary, method='lee'))
-        display_image(skeletonized_lee, 'skeletonize lee')
+        # display_image(skeletonized_lee, 'skeletonize lee')
+        save_image(~skeletonized_lee + ~binary, 'skeletonize lee', 'results/skeletons/{}'.format(i))
 
         # 6. skeletonize thin
         # skeletonized_thin = invert(thin(binary))
@@ -166,16 +193,17 @@ for i in os.listdir(data):
         # 7. longest paths
         first_longest_path = get_longest_path(skeletonized_lee)
         first_longest_skelets = get_image_with_longest(skeletonized_lee, first_longest_path)
-        display_image(first_longest_skelets, 'first longest path')
+        # display_image(first_longest_skelets, 'first longest path')
 
         binary_skeletonized_lee = skeletonized_lee > 0
         second_path = binary_skeletonized_lee + ~first_longest_skelets
         second_longest_path = get_longest_path(second_path)
         second_longest_skelets = get_image_with_longest(second_path, second_longest_path)
-        display_image(second_longest_skelets, 'second longest path')
+        # display_image(second_longest_skelets, 'second longest path')
 
         two_longest_paths = first_longest_skelets * second_longest_skelets
-        display_image(two_longest_paths, 'two longest paths')
+        # display_image(~two_longest_paths + ~binary, 'two longest paths')
+        save_image(two_longest_paths, 'two longest paths', 'results/path/{}'.format(i))
 
         # 8. detect lines
         lines = get_lines(two_longest_paths)
@@ -185,17 +213,20 @@ for i in os.listdir(data):
         for m, b in line_functions:
             # y = m*x + b
             cv2.line(img_lines, (int((0 - b) / m), 0), (int((1024 - b) / m), 1024), (255, 0, 0), 1)
-        display_image(img_lines, 'detected lines')
+        # display_image(img_lines, 'detected lines')
 
         # 9. filter lines
         new_lines = filter_lines(line_functions)
-        angle = get_angle(new_lines)
-        print(str.format('Angle: {}', angle))
+        filtered_lines = find_toes(new_lines)
+        # filtered_lines = [new_lines[0], new_lines[1]]
+        angle = get_angle(filtered_lines)
+        # print(new_lines[0], new_lines[1])
+        print(str.format('Img: {}, Angle: {}', i, angle))
         new_img_lines = np.uint8(np.ones(binary.shape))
         new_img_lines = invert(new_img_lines * 255).round().astype(np.uint8)
-        for m, b in new_lines:
+        for m, b in filtered_lines:
             cv2.line(new_img_lines, (int((0 - b) / m), 0), (int((1024 - b) / m), 1024), (255, 0, 0), 1)
-        display_image(new_img_lines, 'filtered lines')
+        # display_image(new_img_lines, 'filtered lines')
 
         # 10. combine images together
         binary = (binary * 255).round().astype(np.uint8)
@@ -204,4 +235,11 @@ for i in os.listdir(data):
         white_pixels_mask = np.any(rgb_lines != [255, 255, 255], axis=-1)
         rgb_binary[~white_pixels_mask] = [255, 0, 0]
 
-        display_image(rgb_binary, 'final segmentation, angle = {}'.format(angle))
+        # display_image(rgb_binary, 'angle = {}'.format(angle))
+        save_image(rgb_binary, 'angle = {}'.format(angle), 'results/lines/{}'.format(i))
+
+        # write to file:
+        with open("hallux_angles.txt", "a") as file:
+            file.writelines('{} IMA {}\n'.format(i, angle))
+
+        # break
